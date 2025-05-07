@@ -1,0 +1,27 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/types.h>
+#include <unistd.h>
+
+int main() {
+    key_t key = ftok("shmfile", 65);
+    int shmid = shmget(key, 1024, 0666 | IPC_CREAT);
+
+    // 공유 메모리 연결
+    char *str = (char *) shmat(shmid, NULL, 0);
+
+    // 쓰기
+    strcpy(str, "Hello Shared Memory");
+    printf("Written to shared memory: %s\n", str);
+
+    // 읽기
+    printf("Reading from shared memory: %s\n", str);
+
+    // 공유 메모리 분리 및 삭제
+    shmdt(str);
+    shmctl(shmid, IPC_RMID, NULL);
+    return 0;
+}

@@ -1,0 +1,43 @@
+linux의 파일 시스템 구조
+
+Unix file system(UFS) : 유닉스 및 유닉스 계열의 운영체제에 쓰이는 파일 시스템 또는 그 개념을 의미
+    - 기본적으로 유닉스 커널은 모든 파일을 바이트 단위의 스트림으로 관리한다.
+
+파일 유형
+ordinary : 사용자 프로그램, 시스템 유틸리티 프로그램 등에 의해 입력된 정보
+directory : 파일의 이름과 아이노드를 위한 포인터를 포함, 계층적으로 구성되며 쓰기 보호 속성을 가진 일반 파일로
+    파일 시스템만이 수정 가능하다 
+special : 터미널이나 프린터와 같은 입출력 장치들의 접근에 활용
+named : named pip
+
+UFS 구성 요소
+    boot block : unix kernel을 file system으로 부터 적재
+    super block : 파일 시스템을 기술하는 정보를 저장
+    inode : 파일이나 디렉터리에 대한 모든 정보를 가지고 있는 구조체
+    data block : 실제 데이터가 저장되는 공간
+
+파일 할당
+    UFS에서는 파일 할당을 블록 단위로 수행
+    색인 기법을 통해 파일의 아이노드에 저장된 색인을 유지
+    아이노드는 3바이트 짜리 주소 13개, 또는 포인터로 구성된 39바이트 주소 정보 1개를 가진다. 
+    처음 10개의 주소는 파일에서 맨처음 10개의 데이터 블록을 가리킨다. 
+    만약 파일이 블록 10개보다 크면 하나 이상의 간접 수준이 사용된다.
+
+저수준 파일 입출력
+user space에서의 system call <=> kernel space + operantion <=> hardware
+POSIX API(glibc) => System call interface => VFS(Virtual File System) 
+    => File System or Device Driver => Hardware
+
+주요 함수
+open() : user : open() => syscall(SYS_open, ...) 
+    | kernel : do_sys_open() => filp_open()
+read() : sys_read() => vfs_read() => file->f_op->read()
+write() : sys_write() => ksys_write() => vfs_write() => file->f_op->write()
+close() : sys_close() → __close_fd() → filp_close() → file->f_op->release()
+fcntl() : sys_fcntl() → switch-case로 기능 구분 → VFS 또는 드라이버 함수 호출
+ioctl() : sys_ioctl() → vfs_ioctl() → file->f_op->unlocked_ioctl() (디바이스 드라이버로 연결)
+
+디바이스 드라이버는 file_operations 구조체의 함수 포인터를 통해 시스템 콜과 연동됩니다.
+드라이버는 copy_from_user()와 copy_to_user()를 통해 유저 공간과 데이터를 주고받습니다.
+하드웨어 I/O는 ioread*(), iowrite*(), 또는 MMIO 방식으로 메모리 맵핑된 I/O 레지스터와 직접 통신하여 처리됩니다.
+디바이스 등록 시, register_chrdev() 혹은 misc_register() 등으로 커널에 등록되어 /dev/ 경로로 접근 가능하게 됩니다
